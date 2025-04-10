@@ -1,27 +1,69 @@
-import { COLORS } from "@/constants/colors";
-import React from "react";
-import { StyleSheet, View, Text, TextInput, SafeAreaView } from "react-native";
-import EvilIcons from "@expo/vector-icons/EvilIcons";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  StyleSheet,
+  SafeAreaView,
+  Text,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { SearchBar } from "@/components/atoms/SearchBar";
+import { VideoList } from "@/components/molecules/VideoList";
+import { debounce } from "@/lib/hellpers/debounce";
+import {
+  getYoutubeSearchResults,
+  YouTubeSearchResult,
+} from "@/lib/services/youtube";
 
 export default function HomeScreen() {
+  const [query, setQuery] = useState("");
+  const [videos, setVideos] = useState<YouTubeSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchVideos = async (searchQuery: string): Promise<void> => {
+    if (searchQuery.trim() === "") {
+      setVideos([]);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getYoutubeSearchResults(searchQuery);
+      setVideos(data.items);
+    } catch (error) {
+      setError("Failed to fetch videos. Please try again.");
+      setVideos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const debouncedFetchVideos = useCallback(debounce(fetchVideos, 500), []);
+
+  useEffect(() => {
+    debouncedFetchVideos(query);
+  }, [query, debouncedFetchVideos]);
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Search</Text>
-      <View style={styles.searchContainer}>
-        <View style={styles.searchWrapper}>
-          <EvilIcons
-            name="search"
-            size={24}
-            color={COLORS.dark.placeholder}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Artists, Songs, Lyrics, and More"
-            placeholderTextColor={COLORS.dark.placeholder}
-          />
+      <SearchBar query={query} onQueryChange={setQuery} />
+      {loading && (
+        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+      )}
+      <VideoList videos={videos} />
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.error}>{error}</Text>
+          <TouchableOpacity onPress={() => debouncedFetchVideos(query)}>
+            <Text style={styles.retryButton}>Retry</Text>
+          </TouchableOpacity>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -29,33 +71,32 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.dark.background,
+    backgroundColor: "#000",
   },
   header: {
     fontSize: 32,
     fontWeight: "bold",
-    color: COLORS.dark.text,
+    color: "#fff",
     marginTop: 16,
     marginHorizontal: 16,
   },
-  searchContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
+  loader: {
+    marginVertical: 16,
   },
-  searchWrapper: {
-    flexDirection: "row",
+  error: {
+    color: "#f00",
+    textAlign: "center",
+    marginVertical: 16,
+  },
+  errorContainer: {
     alignItems: "center",
-    backgroundColor: "#333",
-    borderRadius: 25,
+    marginVertical: 16,
   },
-  searchIcon: {
-    marginLeft: 12,
-  },
-  searchInput: {
-    flex: 1,
-    color: COLORS.dark.text,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    fontSize: 16,
+  retryButton: {
+    color: "#fff",
+    backgroundColor: "#555",
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 8,
   },
 });
