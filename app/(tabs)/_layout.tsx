@@ -14,14 +14,14 @@ export default function TabLayout() {
         tabBarStyle: Platform.select({
           ios: {
             position: "absolute",
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            backgroundColor: COLORS.dark.background,
             borderTopWidth: 0,
             height: 80,
             paddingBottom: 20,
           },
           default: {
             position: "absolute",
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            backgroundColor: COLORS.dark.background,
             borderTopWidth: 0,
             height: 60,
             paddingBottom: 10,
