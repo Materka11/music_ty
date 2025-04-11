@@ -6,6 +6,7 @@ import {
   View,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { SearchBar } from "@/components/atoms/SearchBar";
 import { VideoList } from "@/components/molecules/VideoList";
@@ -20,6 +21,25 @@ export default function HomeScreen() {
   const [videos, setVideos] = useState<YouTubeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const headerOpacity = useState(new Animated.Value(1))[0];
+  const searchBarTranslateY = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, {
+        toValue: isSearchFocused ? 0 : 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(searchBarTranslateY, {
+        toValue: isSearchFocused ? -40 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isSearchFocused, headerOpacity, searchBarTranslateY]);
 
   const fetchVideos = async (searchQuery: string): Promise<void> => {
     if (searchQuery.trim() === "") {
@@ -48,14 +68,43 @@ export default function HomeScreen() {
     debouncedFetchVideos(query);
   }, [query, debouncedFetchVideos]);
 
+  const handleCancel = () => {
+    setQuery("");
+    setVideos([]);
+    setError(null);
+    setIsSearchFocused(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Search</Text>
-      <SearchBar query={query} onQueryChange={setQuery} />
+      <Animated.View style={{ opacity: headerOpacity }}>
+        <Text style={styles.header}>Search</Text>
+      </Animated.View>
+      <Animated.View
+        style={{
+          transform: [{ translateY: searchBarTranslateY }],
+        }}
+      >
+        <SearchBar
+          query={query}
+          onQueryChange={setQuery}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => {
+            if (query.trim() === "") {
+              setIsSearchFocused(false);
+            }
+          }}
+          style={isSearchFocused ? styles.searchBarFocused : styles.searchBar}
+          handleCancel={handleCancel}
+        />
+      </Animated.View>
+
       {loading && (
         <ActivityIndicator size="large" color="#fff" style={styles.loader} />
       )}
+
       <VideoList videos={videos} />
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
@@ -97,6 +146,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#555",
     padding: 8,
     borderRadius: 8,
+    marginTop: 8,
+  },
+  searchBar: {
+    marginVertical: 8,
+  },
+  searchBarFocused: {
+    marginVertical: 0,
     marginTop: 8,
   },
 });
