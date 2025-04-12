@@ -5,9 +5,10 @@ import { YouTubeSearchResult } from "@/lib/services/youtube";
 
 interface IProps {
   videos: YouTubeSearchResult[];
+  onEndReached?: () => void;
 }
 
-export const VideoList = ({ videos }: IProps) => {
+export const VideoList = ({ videos, onEndReached }: IProps) => {
   const renderVideoItem = ({
     item,
   }: ListRenderItemInfo<YouTubeSearchResult>) => <VideoItem item={item} />;
@@ -18,6 +19,10 @@ export const VideoList = ({ videos }: IProps) => {
       renderItem={renderVideoItem}
       keyExtractor={(item) => item.id.videoId}
       contentContainerStyle={styles.listContainer}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      initialNumToRender={10}
+      windowSize={5}
     />
   );
 };
