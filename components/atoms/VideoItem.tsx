@@ -2,12 +2,16 @@ import { COLORS } from "@/constants/colors";
 import { YouTubeSearchResult } from "@/lib/services/youtube";
 import React from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity } from "react-native";
+import he from "he";
 
 interface IProps {
   item: YouTubeSearchResult;
 }
 
 export const VideoItem = ({ item }: IProps) => {
+  const decodedTitle = he.decode(item.snippet.title);
+  const decodedChannelTitle = he.decode(item.snippet.channelTitle);
+
   return (
     <TouchableOpacity style={styles.videoItem}>
       <Image
@@ -16,10 +20,10 @@ export const VideoItem = ({ item }: IProps) => {
       />
       <View style={styles.videoInfo}>
         <Text style={styles.videoTitle} numberOfLines={2}>
-          {item.snippet.title}
+          {decodedTitle}
         </Text>
         <Text style={styles.channelName} numberOfLines={1}>
-          {item.snippet.channelTitle}
+          {decodedChannelTitle}
         </Text>
       </View>
     </TouchableOpacity>
@@ -44,12 +48,12 @@ const styles = StyleSheet.create({
   },
   videoTitle: {
     color: COLORS.dark.text,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "400",
   },
   channelName: {
     color: COLORS.dark.placeholder,
-    fontSize: 14,
+    fontSize: 12,
     marginTop: 4,
   },
 });

@@ -6,6 +6,7 @@ import {
   View,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { SearchBar } from "@/components/atoms/SearchBar";
 import { VideoList } from "@/components/molecules/VideoList";
@@ -19,26 +20,77 @@ export default function HomeScreen() {
   const [query, setQuery] = useState("");
   const [videos, setVideos] = useState<YouTubeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(
+    undefined
+  );
 
-  const fetchVideos = async (searchQuery: string): Promise<void> => {
+  const headerOpacity = useState(new Animated.Value(1))[0];
+  const searchBarTranslateY = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, {
+        toValue: isSearchFocused ? 0 : 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(searchBarTranslateY, {
+        toValue: isSearchFocused ? -40 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isSearchFocused, headerOpacity, searchBarTranslateY]);
+
+  const fetchVideos = async (
+    searchQuery: string,
+    pageToken?: string,
+    isLoadMore: boolean = false
+  ): Promise<void> => {
     if (searchQuery.trim() === "") {
       setVideos([]);
       setError(null);
+      setNextPageToken(undefined);
       return;
     }
 
-    setLoading(true);
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
 
     try {
-      const data = await getYoutubeSearchResults(searchQuery);
-      setVideos(data.items);
+      const data = await getYoutubeSearchResults(searchQuery, pageToken);
+      if (isLoadMore) {
+        setVideos((prevVideos) => {
+          const existingVideoIds = new Set(
+            prevVideos.map((video) => video.id.videoId)
+          );
+          const newVideos = data.items.filter(
+            (video) => !existingVideoIds.has(video.id.videoId)
+          );
+          return [...prevVideos, ...newVideos];
+        });
+      } else {
+        setVideos(data.items);
+      }
+      setNextPageToken(data.nextPageToken);
     } catch (error) {
       setError("Failed to fetch videos. Please try again.");
-      setVideos([]);
+      if (!isLoadMore) {
+        setVideos([]);
+      }
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -48,14 +100,65 @@ export default function HomeScreen() {
     debouncedFetchVideos(query);
   }, [query, debouncedFetchVideos]);
 
+  const handleLoadMore = () => {
+    if (loadingMore || !nextPageToken || error) return;
+    fetchVideos(query, nextPageToken, true);
+  };
+
+  const debouncedHandleLoadMore = useCallback(debounce(handleLoadMore, 300), [
+    loadingMore,
+    nextPageToken,
+    error,
+    query,
+  ]);
+
+  const handleCancel = () => {
+    setQuery("");
+    setVideos([]);
+    setError(null);
+    setIsSearchFocused(false);
+    setNextPageToken(undefined);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Search</Text>
-      <SearchBar query={query} onQueryChange={setQuery} />
+      <Animated.View style={{ opacity: headerOpacity }}>
+        <Text style={styles.header}>Search</Text>
+      </Animated.View>
+      <Animated.View
+        style={{
+          transform: [{ translateY: searchBarTranslateY }],
+        }}
+      >
+        <SearchBar
+          query={query}
+          onQueryChange={setQuery}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => {
+            if (query.trim() === "") {
+              setIsSearchFocused(false);
+            }
+          }}
+          style={isSearchFocused ? styles.searchBarFocused : styles.searchBar}
+          handleCancel={handleCancel}
+        />
+      </Animated.View>
+
       {loading && (
         <ActivityIndicator size="large" color="#fff" style={styles.loader} />
       )}
-      <VideoList videos={videos} />
+
+      <VideoList videos={videos} onEndReached={debouncedHandleLoadMore} />
+
+      {loadingMore && (
+        <ActivityIndicator
+          size="small"
+          color="#fff"
+          style={styles.loadMoreIndicator}
+          accessibilityLabel="Loading more videos"
+        />
+      )}
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
@@ -83,6 +186,9 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 16,
   },
+  loadMoreIndicator: {
+    marginVertical: 16,
+  },
   error: {
     color: "#f00",
     textAlign: "center",
@@ -97,6 +203,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#555",
     padding: 8,
     borderRadius: 8,
+    marginTop: 8,
+  },
+  searchBar: {
+    marginVertical: 16,
+  },
+  searchBarFocused: {
+    marginVertical: 0,
     marginTop: 8,
   },
 });
