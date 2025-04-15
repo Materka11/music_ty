@@ -9,23 +9,18 @@ import {
   Animated,
 } from "react-native";
 import { SearchBar } from "@/components/atoms/SearchBar";
-import { VideoList } from "@/components/molecules/VideoList";
+import { SearchList } from "@/components/molecules/SearchList";
 import { debounce } from "@/lib/hellpers/debounce";
-import {
-  getYoutubeSearchResults,
-  YouTubeSearchResult,
-} from "@/lib/services/youtube";
+import { getDeezerSearchResults } from "@/lib/services/deezer";
 
 export default function HomeScreen() {
   const [query, setQuery] = useState("");
-  const [videos, setVideos] = useState<YouTubeSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<DeezerSearchResult | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [nextPageToken, setNextPageToken] = useState<string | undefined>(
-    undefined
-  );
 
   const headerOpacity = useState(new Animated.Value(1))[0];
   const searchBarTranslateY = useState(new Animated.Value(0))[0];
@@ -47,50 +42,29 @@ export default function HomeScreen() {
 
   const fetchVideos = async (
     searchQuery: string,
-    pageToken?: string,
     isLoadMore: boolean = false
   ): Promise<void> => {
     if (searchQuery.trim() === "") {
-      setVideos([]);
+      setSearchResults(null);
       setError(null);
-      setNextPageToken(undefined);
       return;
     }
 
-    if (isLoadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+    setLoading(true);
+
     setError(null);
 
     try {
-      const data = await getYoutubeSearchResults(searchQuery, pageToken);
-      if (isLoadMore) {
-        setVideos((prevVideos) => {
-          const existingVideoIds = new Set(
-            prevVideos.map((video) => video.id.videoId)
-          );
-          const newVideos = data.items.filter(
-            (video) => !existingVideoIds.has(video.id.videoId)
-          );
-          return [...prevVideos, ...newVideos];
-        });
-      } else {
-        setVideos(data.items);
-      }
-      setNextPageToken(data.nextPageToken);
+      const data = await getDeezerSearchResults({ q: searchQuery });
+      console.log(data);
+      setSearchResults(data);
     } catch (error) {
       setError("Failed to fetch videos. Please try again.");
       if (!isLoadMore) {
-        setVideos([]);
+        setSearchResults(null);
       }
     } finally {
-      if (isLoadMore) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
@@ -100,24 +74,11 @@ export default function HomeScreen() {
     debouncedFetchVideos(query);
   }, [query, debouncedFetchVideos]);
 
-  const handleLoadMore = () => {
-    if (loadingMore || !nextPageToken || error) return;
-    fetchVideos(query, nextPageToken, true);
-  };
-
-  const debouncedHandleLoadMore = useCallback(debounce(handleLoadMore, 300), [
-    loadingMore,
-    nextPageToken,
-    error,
-    query,
-  ]);
-
   const handleCancel = () => {
     setQuery("");
-    setVideos([]);
+    setSearchResults(null);
     setError(null);
     setIsSearchFocused(false);
-    setNextPageToken(undefined);
   };
 
   return (
@@ -148,16 +109,7 @@ export default function HomeScreen() {
         <ActivityIndicator size="large" color="#fff" style={styles.loader} />
       )}
 
-      <VideoList videos={videos} onEndReached={debouncedHandleLoadMore} />
-
-      {loadingMore && (
-        <ActivityIndicator
-          size="small"
-          color="#fff"
-          style={styles.loadMoreIndicator}
-          accessibilityLabel="Loading more videos"
-        />
-      )}
+      <SearchList searchResults={searchResults?.data || []} />
 
       {error && (
         <View style={styles.errorContainer}>

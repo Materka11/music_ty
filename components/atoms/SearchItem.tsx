@@ -1,42 +1,26 @@
 import { COLORS } from "@/constants/colors";
-import { YouTubeSearchResult } from "@/lib/services/youtube";
 import React from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity } from "react-native";
 import he from "he";
-import { router } from "expo-router";
 
 interface IProps {
-  item: YouTubeSearchResult;
+  item: DeezerTrack;
 }
 
-export const VideoItem = ({ item }: IProps) => {
-  const decodedTitle = he.decode(item.snippet.title);
-  const decodedChannelTitle = he.decode(item.snippet.channelTitle);
+export const SearchItem = ({ item }: IProps) => {
+  const decodedTitle = he.decode(item.title);
 
-  const handlePress = () => {
-    router.push({
-      pathname: "/video-player/[videoId]",
-      params: {
-        videoId: item.id.videoId,
-        thumbnailUrl: item.snippet.thumbnails.medium.url,
-        title: item.snippet.title,
-        channelTitle: item.snippet.channelTitle,
-      },
-    });
-  };
+  const handlePress = () => {};
 
   return (
     <TouchableOpacity style={styles.videoItem} onPress={handlePress}>
       <Image
-        source={{ uri: item.snippet.thumbnails.medium.url }}
+        source={{ uri: item.album.cover_medium }}
         style={styles.thumbnail}
       />
       <View style={styles.videoInfo}>
         <Text style={styles.videoTitle} numberOfLines={2}>
           {decodedTitle}
-        </Text>
-        <Text style={styles.channelName} numberOfLines={1}>
-          {decodedChannelTitle}
         </Text>
       </View>
     </TouchableOpacity>
