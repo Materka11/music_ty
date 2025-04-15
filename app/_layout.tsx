@@ -31,10 +31,6 @@ export default function RootLayout() {
           name="(tabs)"
           options={{ title: "Search", headerShown: false }}
         />
-        <Stack.Screen
-          name="video-player/[videoId]"
-          options={{ title: "Audio Player" }}
-        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" backgroundColor={COLORS.dark.background} />
