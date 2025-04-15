@@ -3,6 +3,7 @@ import { YouTubeSearchResult } from "@/lib/services/youtube";
 import React from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity } from "react-native";
 import he from "he";
+import { router } from "expo-router";
 
 interface IProps {
   item: YouTubeSearchResult;
@@ -12,8 +13,20 @@ export const VideoItem = ({ item }: IProps) => {
   const decodedTitle = he.decode(item.snippet.title);
   const decodedChannelTitle = he.decode(item.snippet.channelTitle);
 
+  const handlePress = () => {
+    router.push({
+      pathname: "/video-player/[videoId]",
+      params: {
+        videoId: item.id.videoId,
+        thumbnailUrl: item.snippet.thumbnails.medium.url,
+        title: item.snippet.title,
+        channelTitle: item.snippet.channelTitle,
+      },
+    });
+  };
+
   return (
-    <TouchableOpacity style={styles.videoItem}>
+    <TouchableOpacity style={styles.videoItem} onPress={handlePress}>
       <Image
         source={{ uri: item.snippet.thumbnails.medium.url }}
         style={styles.thumbnail}
