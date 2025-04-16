@@ -2,11 +2,14 @@ const DEEZER_API_URL = "https://api.deezer.com";
 
 export const getDeezerSearchResults = async ({
   q,
-}: GetDeezerSearchResultsParams) => {
+  type = "track",
+}: GetDeezerSearchResultsParams): Promise<DeezerSearchResult> => {
   try {
-    const url = `${DEEZER_API_URL}/search?q=${q}`;
+    const encodedQuery = encodeURIComponent(q);
 
-    const response = await fetch(url, {
+    const endpoint = `${DEEZER_API_URL}/search/${type}?q=${encodedQuery}`;
+
+    const response = await fetch(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -14,19 +17,22 @@ export const getDeezerSearchResults = async ({
     });
 
     if (!response.ok) {
-      console.error(
-        "Error fetching Deezer search results:",
-        response.statusText
+      throw new Error(
+        `Error fetching from ${endpoint}: ${response.statusText}`
       );
     }
 
-    const data: DeezerSearchResult = await response.json();
+    const data = await response.json();
 
-    // if (data.error) {
-    //   console.error("Error fetching Deezer search results:", data.error);
-    // }
+    const formattedData = data.data.map((item: DeezerSearchResultItem) => ({
+      ...item,
+      type,
+    }));
 
-    return data;
+    return {
+      data: formattedData,
+      total: formattedData.length,
+    };
   } catch (error) {
     console.error("Error fetching Deezer search results:", error);
     throw error;

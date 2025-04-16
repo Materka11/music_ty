@@ -3,14 +3,14 @@ import { StyleSheet, FlatList, ListRenderItemInfo } from "react-native";
 import { SearchItem } from "../atoms/SearchItem";
 
 interface IProps {
-  searchResults: DeezerTrack[];
+  searchResults: DeezerSearchResultItem[];
   onEndReached?: () => void;
 }
 
 export const SearchList = ({ searchResults, onEndReached }: IProps) => {
-  const renderVideoItem = ({ item }: ListRenderItemInfo<DeezerTrack>) => (
-    <SearchItem item={item} />
-  );
+  const renderVideoItem = ({
+    item,
+  }: ListRenderItemInfo<DeezerSearchResultItem>) => <SearchItem item={item} />;
 
   return (
     <FlatList

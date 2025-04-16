@@ -44,7 +44,7 @@ export const SearchBar = ({
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Artists, Songs, Lyrics, and More"
+          placeholder="Artists, Tracks, Albums..."
           placeholderTextColor={COLORS.dark.placeholder}
           value={query}
           onChangeText={onQueryChange}

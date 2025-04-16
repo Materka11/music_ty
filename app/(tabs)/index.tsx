@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
+  ScrollView,
 } from "react-native";
 import { SearchBar } from "@/components/atoms/SearchBar";
 import { SearchList } from "@/components/molecules/SearchList";
-import { debounce } from "@/lib/hellpers/debounce";
+import { debounce } from "@/lib/helpers/debounce";
 import { getDeezerSearchResults } from "@/lib/services/deezer";
 
 export default function HomeScreen() {
@@ -21,6 +22,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchType, setSearchType] = useState<DeezerSearchResultType>("track");
 
   const headerOpacity = useState(new Animated.Value(1))[0];
   const searchBarTranslateY = useState(new Animated.Value(0))[0];
@@ -40,7 +42,7 @@ export default function HomeScreen() {
     ]).start();
   }, [isSearchFocused, headerOpacity, searchBarTranslateY]);
 
-  const fetchVideos = async (
+  const fetchSearchResults = async (
     searchQuery: string,
     isLoadMore: boolean = false
   ): Promise<void> => {
@@ -49,17 +51,17 @@ export default function HomeScreen() {
       setError(null);
       return;
     }
-
     setLoading(true);
-
     setError(null);
 
     try {
-      const data = await getDeezerSearchResults({ q: searchQuery });
-      console.log(data);
+      const data = await getDeezerSearchResults({
+        q: searchQuery,
+        type: searchType,
+      });
       setSearchResults(data);
     } catch (error) {
-      setError("Failed to fetch videos. Please try again.");
+      setError("Failed to fetch items. Please try again.");
       if (!isLoadMore) {
         setSearchResults(null);
       }
@@ -68,11 +70,14 @@ export default function HomeScreen() {
     }
   };
 
-  const debouncedFetchVideos = useCallback(debounce(fetchVideos, 500), []);
+  const debouncedFetchSearchResults = useCallback(
+    debounce(fetchSearchResults, 500),
+    [searchType]
+  );
 
   useEffect(() => {
-    debouncedFetchVideos(query);
-  }, [query, debouncedFetchVideos]);
+    debouncedFetchSearchResults(query);
+  }, [query, debouncedFetchSearchResults]);
 
   const handleCancel = () => {
     setQuery("");
@@ -100,9 +105,65 @@ export default function HomeScreen() {
               setIsSearchFocused(false);
             }
           }}
-          style={isSearchFocused ? styles.searchBarFocused : styles.searchBar}
+          style={styles.searchBar}
           handleCancel={handleCancel}
         />
+      </Animated.View>
+      <Animated.View
+        style={{
+          transform: [{ translateY: searchBarTranslateY }],
+        }}
+      >
+        <ScrollView horizontal style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "track" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("track")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "track" && styles.typeButtonTextActive,
+              ]}
+            >
+              Tracks
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "album" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("album")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "album" && styles.typeButtonTextActive,
+              ]}
+            >
+              Albums
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "artist" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("artist")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "artist" && styles.typeButtonTextActive,
+              ]}
+            >
+              Artists
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Animated.View>
 
       {loading && (
@@ -114,7 +175,7 @@ export default function HomeScreen() {
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity onPress={() => debouncedFetchVideos(query)}>
+          <TouchableOpacity onPress={() => debouncedFetchSearchResults(query)}>
             <Text style={styles.retryButton}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -158,10 +219,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   searchBar: {
-    marginVertical: 16,
+    marginVertical: 8,
   },
-  searchBarFocused: {
-    marginVertical: 0,
-    marginTop: 8,
+
+  typeSelector: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  typeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: "#333",
+    maxHeight: 32,
+    minWidth: 80,
+  },
+  typeButtonActive: {
+    backgroundColor: "#fff",
+  },
+  typeButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  typeButtonTextActive: {
+    color: "#000",
   },
 });

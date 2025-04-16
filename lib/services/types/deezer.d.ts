@@ -1,5 +1,8 @@
+type DeezerSearchResultType = "track" | "album" | "artist";
+
 interface GetDeezerSearchResultsParams {
   q: string;
+  type?: DeezerSearchResultType;
 }
 
 interface DeezerArtist {
@@ -16,6 +19,7 @@ interface DeezerArtist {
   nb_fan: number;
   radio: boolean;
   tracklist: string;
+  type: "artist";
 }
 
 interface DeezerAlbum {
@@ -48,6 +52,7 @@ interface DeezerAlbum {
   fallback: DeezerAlbum[];
   artist: DeezerArtist;
   tracks: DeezerTrack[];
+  type: "album";
 }
 
 interface DeezerGenre {
@@ -58,6 +63,7 @@ interface DeezerGenre {
   picture_medium: string;
   picture_big: string;
   picture_xl: string;
+  type: "genre";
 }
 
 interface DeezerTrack {
@@ -73,10 +79,13 @@ interface DeezerTrack {
   preview: string;
   artist: DeezerArtist;
   album: DeezerAlbum;
+  type: "track";
 }
 
+type DeezerSearchResultItem = DeezerTrack | DeezerArtist | DeezerAlbum;
+
 interface DeezerSearchResult {
-  data: DeezerTrack[];
+  data: DeezerSearchResultItem[];
   total: number;
-  next: string;
+  next?: string;
 }

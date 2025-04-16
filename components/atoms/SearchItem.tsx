@@ -4,24 +4,34 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from "react-native";
 import he from "he";
 
 interface IProps {
-  item: DeezerTrack;
+  item: DeezerSearchResultItem;
 }
 
 export const SearchItem = ({ item }: IProps) => {
-  const decodedTitle = he.decode(item.title);
+  const getTitle = () => {
+    if (item.type === "track") return he.decode(item.title);
+    if (item.type === "artist") return he.decode(item.name);
+    if (item.type === "album") return he.decode(item.title);
+    return "";
+  };
+
+  const getImage = () => {
+    if (item.type === "track") return item.album.cover_medium;
+    if (item.type === "artist") return item.picture_medium;
+    if (item.type === "album") return item.cover_medium;
+    return "";
+  };
 
   const handlePress = () => {};
 
   return (
     <TouchableOpacity style={styles.videoItem} onPress={handlePress}>
-      <Image
-        source={{ uri: item.album.cover_medium }}
-        style={styles.thumbnail}
-      />
+      <Image source={{ uri: getImage() }} style={styles.thumbnail} />
       <View style={styles.videoInfo}>
         <Text style={styles.videoTitle} numberOfLines={2}>
-          {decodedTitle}
+          {getTitle()}
         </Text>
+        <Text>{item.type}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -47,10 +57,5 @@ const styles = StyleSheet.create({
     color: COLORS.dark.text,
     fontSize: 15,
     fontWeight: "400",
-  },
-  channelName: {
-    color: COLORS.dark.placeholder,
-    fontSize: 12,
-    marginTop: 4,
   },
 });
