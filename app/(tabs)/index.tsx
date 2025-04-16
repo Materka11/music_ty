@@ -7,25 +7,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
+  ScrollView,
 } from "react-native";
 import { SearchBar } from "@/components/atoms/SearchBar";
-import { VideoList } from "@/components/molecules/VideoList";
-import { debounce } from "@/lib/hellpers/debounce";
-import {
-  getYoutubeSearchResults,
-  YouTubeSearchResult,
-} from "@/lib/services/youtube";
+import { SearchList } from "@/components/molecules/SearchList";
+import { debounce } from "@/lib/helpers/debounce";
+import { getDeezerSearchResults } from "@/lib/services/deezer";
 
 export default function HomeScreen() {
   const [query, setQuery] = useState("");
-  const [videos, setVideos] = useState<YouTubeSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<DeezerSearchResult | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [nextPageToken, setNextPageToken] = useState<string | undefined>(
-    undefined
-  );
+  const [searchType, setSearchType] = useState<DeezerSearchResultType>("track");
 
   const headerOpacity = useState(new Animated.Value(1))[0];
   const searchBarTranslateY = useState(new Animated.Value(0))[0];
@@ -45,79 +42,48 @@ export default function HomeScreen() {
     ]).start();
   }, [isSearchFocused, headerOpacity, searchBarTranslateY]);
 
-  const fetchVideos = async (
+  const fetchSearchResults = async (
     searchQuery: string,
-    pageToken?: string,
     isLoadMore: boolean = false
   ): Promise<void> => {
     if (searchQuery.trim() === "") {
-      setVideos([]);
+      setSearchResults(null);
       setError(null);
-      setNextPageToken(undefined);
       return;
     }
-
-    if (isLoadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+    setLoading(true);
     setError(null);
 
     try {
-      const data = await getYoutubeSearchResults(searchQuery, pageToken);
-      if (isLoadMore) {
-        setVideos((prevVideos) => {
-          const existingVideoIds = new Set(
-            prevVideos.map((video) => video.id.videoId)
-          );
-          const newVideos = data.items.filter(
-            (video) => !existingVideoIds.has(video.id.videoId)
-          );
-          return [...prevVideos, ...newVideos];
-        });
-      } else {
-        setVideos(data.items);
-      }
-      setNextPageToken(data.nextPageToken);
+      const data = await getDeezerSearchResults({
+        q: searchQuery,
+        type: searchType,
+      });
+      setSearchResults(data);
     } catch (error) {
-      setError("Failed to fetch videos. Please try again.");
+      setError("Failed to fetch items. Please try again.");
       if (!isLoadMore) {
-        setVideos([]);
+        setSearchResults(null);
       }
     } finally {
-      if (isLoadMore) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
-  const debouncedFetchVideos = useCallback(debounce(fetchVideos, 500), []);
+  const debouncedFetchSearchResults = useCallback(
+    debounce(fetchSearchResults, 500),
+    [searchType]
+  );
 
   useEffect(() => {
-    debouncedFetchVideos(query);
-  }, [query, debouncedFetchVideos]);
-
-  const handleLoadMore = () => {
-    if (loadingMore || !nextPageToken || error) return;
-    fetchVideos(query, nextPageToken, true);
-  };
-
-  const debouncedHandleLoadMore = useCallback(debounce(handleLoadMore, 300), [
-    loadingMore,
-    nextPageToken,
-    error,
-    query,
-  ]);
+    debouncedFetchSearchResults(query);
+  }, [query, debouncedFetchSearchResults]);
 
   const handleCancel = () => {
     setQuery("");
-    setVideos([]);
+    setSearchResults(null);
     setError(null);
     setIsSearchFocused(false);
-    setNextPageToken(undefined);
   };
 
   return (
@@ -139,30 +105,77 @@ export default function HomeScreen() {
               setIsSearchFocused(false);
             }
           }}
-          style={isSearchFocused ? styles.searchBarFocused : styles.searchBar}
+          style={styles.searchBar}
           handleCancel={handleCancel}
         />
+      </Animated.View>
+      <Animated.View
+        style={{
+          transform: [{ translateY: searchBarTranslateY }],
+        }}
+      >
+        <ScrollView horizontal style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "track" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("track")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "track" && styles.typeButtonTextActive,
+              ]}
+            >
+              Tracks
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "album" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("album")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "album" && styles.typeButtonTextActive,
+              ]}
+            >
+              Albums
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              searchType === "artist" && styles.typeButtonActive,
+            ]}
+            onPress={() => setSearchType("artist")}
+          >
+            <Text
+              style={[
+                styles.typeButtonText,
+                searchType === "artist" && styles.typeButtonTextActive,
+              ]}
+            >
+              Artists
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Animated.View>
 
       {loading && (
         <ActivityIndicator size="large" color="#fff" style={styles.loader} />
       )}
 
-      <VideoList videos={videos} onEndReached={debouncedHandleLoadMore} />
-
-      {loadingMore && (
-        <ActivityIndicator
-          size="small"
-          color="#fff"
-          style={styles.loadMoreIndicator}
-          accessibilityLabel="Loading more videos"
-        />
-      )}
+      <SearchList searchResults={searchResults?.data || []} />
 
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity onPress={() => debouncedFetchVideos(query)}>
+          <TouchableOpacity onPress={() => debouncedFetchSearchResults(query)}>
             <Text style={styles.retryButton}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -206,10 +219,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   searchBar: {
-    marginVertical: 16,
+    marginVertical: 8,
   },
-  searchBarFocused: {
-    marginVertical: 0,
-    marginTop: 8,
+
+  typeSelector: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  typeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: "#333",
+    maxHeight: 32,
+    minWidth: 80,
+  },
+  typeButtonActive: {
+    backgroundColor: "#fff",
+  },
+  typeButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  typeButtonTextActive: {
+    color: "#000",
   },
 });

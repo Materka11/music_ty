@@ -1,23 +1,22 @@
 import React from "react";
 import { StyleSheet, FlatList, ListRenderItemInfo } from "react-native";
-import { VideoItem } from "../atoms/VideoItem";
-import { YouTubeSearchResult } from "@/lib/services/youtube";
+import { SearchItem } from "../atoms/SearchItem";
 
 interface IProps {
-  videos: YouTubeSearchResult[];
+  searchResults: DeezerSearchResultItem[];
   onEndReached?: () => void;
 }
 
-export const VideoList = ({ videos, onEndReached }: IProps) => {
+export const SearchList = ({ searchResults, onEndReached }: IProps) => {
   const renderVideoItem = ({
     item,
-  }: ListRenderItemInfo<YouTubeSearchResult>) => <VideoItem item={item} />;
+  }: ListRenderItemInfo<DeezerSearchResultItem>) => <SearchItem item={item} />;
 
   return (
     <FlatList
-      data={videos}
+      data={searchResults}
       renderItem={renderVideoItem}
-      keyExtractor={(item) => item.id.videoId}
+      keyExtractor={(item) => item.id?.toString()}
       contentContainerStyle={styles.listContainer}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
